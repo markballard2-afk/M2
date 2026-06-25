@@ -48,8 +48,27 @@
 
 1. **AI-Powered Media Revenue Command Center** — Building an OmniAI agent system for P.A.C.E. Foundation to automate operations, content, donor outreach, and reporting
    - Stack: Claude (strategy/content), N8n (automation hub), ElevenLabs (audio), Notion (ops), Make.com
-   - Agent roster: Simone, Vantage, CloserBot, Booker, Architect, Analyst, Watchman
    - Daily briefings: 6:30 AM and 9 PM summaries via ElevenLabs audio
+   - Full agent roster and job descriptions: `agents/AGENT_BIBLE.md`
+   - **Agent Roster (family-named):**
+     - Clarence "Papa" Ballard — COO / Operations Overseer
+     - Greg Ballard — Strategy & Innovation
+     - Barbara "Nana" Ballard — Culture & Messaging
+     - Sandra Ballard — Family Advisor / Legacy Alignment
+     - Moriah Ballard — Donor Development
+     - Terrence Ballard — Underwriting Sales
+     - Jamie Ballard — Grants & Foundations
+     - Louise — Sales Conversion (formerly CloserBot)
+     - Darnell Ballard — Music Programming
+     - Marleigh Ballard — AI Music Factory
+     - Donte Ballard — Creative Campaigns
+     - Jessie — Automation Systems (formerly Simone)
+     - Kalisha — Guest & Event Booking (formerly Booker)
+     - Tom Jones — Infrastructure & Technology (formerly Architect)
+     - Seven Townsel — Data Intelligence (formerly Analyst)
+     - Bishop Hank Ballard — Security & Monitoring (formerly Watchman)
+     - Mark Anthony Ballard II — Media Expansion
+     - Marlon Ballard — Special Projects
 
 2. **WNZN $1M Revenue Roadmap** — 36-month plan to scale radio revenue
    - Channels: underwriting, Google Ad Grants, major donor cultivation, events, OTT subscriptions
