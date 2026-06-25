@@ -1,0 +1,242 @@
+{
+  "name": "WNZN Power - Daily Compliance & Brand Monitoring (Bishop Hank)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "builtin:BasicScheduleTrigger",
+      "version": 1,
+      "parameters": {
+        "interval": [{ "unit": "day", "value": 1 }],
+        "time": "08:00"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 }
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": true
+      },
+      "mapper": {
+        "url": "https://wnzn.org",
+        "method": "GET",
+        "timeout": 30
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 },
+        "notes": "Uptime check — if WNZN.org returns non-200, alert immediately"
+      }
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Site is DOWN — Alert immediately",
+        "condition": {
+          "leftValue": "{{2.statusCode}}",
+          "operator": "notEqual",
+          "rightValue": "200"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": -150 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "twilio:createMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_TWILIO_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DR_BALLARD_PHONE",
+        "from": "YOUR_TWILIO_NUMBER",
+        "body": "🚨 ALERT — WNZN.org is DOWN. Status code: {{2.statusCode}}. Tom Jones is being notified. — Bishop Hank"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": -150 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "TOM_EMAIL",
+        "cc": "DR_BALLARD_EMAIL",
+        "subject": "🚨 WNZN.org IS DOWN — Immediate Action Required",
+        "bodyType": "html",
+        "body": "<p>Tom,</p><p>WNZN.org failed its uptime check at {{formatDate(now; 'h:mm A')}} today. Status code returned: {{2.statusCode}}.</p><p>Please investigate immediately and restore the site. Dr. Ballard has been notified via text.</p><p>SLA: Site must be restored within 2 hours. Notify Dr. Ballard when resolved.</p><p>— Bishop Hank (Security & Monitoring)</p>"
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": -150 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": true
+      },
+      "mapper": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "method": "GET",
+        "qs": [
+          { "name": "key", "value": "YOUR_GOOGLE_API_KEY" },
+          { "name": "cx", "value": "YOUR_GOOGLE_ALERT_SEARCH_ENGINE_ID" },
+          { "name": "q", "value": "\"WNZN Power\" OR \"WNZN 89.1\" OR \"PACE Foundation Lorain\" OR \"Mark Ballard WNZN\"" },
+          { "name": "dateRestrict", "value": "d1" },
+          { "name": "num", "value": "10" }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 },
+        "notes": "Brand mention search via Google Custom Search API"
+      }
+    },
+    {
+      "id": 7,
+      "module": "builtin:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "variables": [
+          {
+            "name": "site_status",
+            "value": "{{if(2.statusCode == 200; 'ONLINE ✅'; '⚠️ DOWN — ' + 2.statusCode)}}"
+          },
+          {
+            "name": "mention_count",
+            "value": "{{6.body.searchInformation.totalResults}}"
+          },
+          {
+            "name": "top_mentions",
+            "value": "{{join(map(6.body.items; 'title' + ': ' + 'link'); '\n')}}"
+          },
+          {
+            "name": "todays_date",
+            "value": "{{formatDate(now; 'MMMM D, YYYY')}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": true
+      },
+      "mapper": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "headers": [
+          { "name": "x-api-key", "value": "YOUR_ANTHROPIC_API_KEY" },
+          { "name": "anthropic-version", "value": "2023-06-01" },
+          { "name": "content-type", "value": "application/json" }
+        ],
+        "bodyType": "raw",
+        "contentType": "application/json",
+        "body": "{\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 300,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are Bishop Hank Ballard, the security and brand monitoring agent for WNZN Power 89.1 FM in Lorain, Ohio. Review today's brand mentions and write a 3-5 sentence daily security briefing.\\n\\nDate: {{7.todays_date}}\\nWNZN.org Status: {{7.site_status}}\\nBrand mentions found today: {{7.mention_count}}\\nTop mentions:\\n{{7.top_mentions}}\\n\\nWrite a brief, direct security/brand status report. Flag anything that looks like negative press, unauthorized use of the WNZN name, or potential brand issues. If nothing concerning, say so clearly. Keep it under 150 words.\"\n    }\n  ]\n}"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 9,
+      "module": "builtin:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "variables": [
+          {
+            "name": "hank_report",
+            "value": "{{8.body.content[].text}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_MONITORING_CHANNEL_ID",
+        "text": "🔐 *Bishop Hank Daily Report — {{7.todays_date}}*\n\n*Site Status:* {{7.site_status}}\n*Brand Mentions (24hr):* {{7.mention_count}}\n\n{{9.hank_report}}"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 }
+      }
+    },
+    {
+      "id": 11,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Flag if high mention volume or issues detected",
+        "condition": {
+          "leftValue": "{{toNumber(7.mention_count)}}",
+          "operator": "greaterThan",
+          "rightValue": "20"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 },
+        "notes": "Alert Papa/Dr. Ballard if mention volume spikes — could signal viral attention (good or bad)"
+      }
+    },
+    {
+      "id": 12,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DR_BALLARD_EMAIL",
+        "cc": "PAPA_EMAIL",
+        "subject": "⚠️ Brand Alert — WNZN Power Mention Spike ({{7.mention_count}} mentions today)",
+        "bodyType": "html",
+        "body": "<p>Dr. Ballard,</p><p>WNZN Power is seeing elevated brand mentions today — <strong>{{7.mention_count}} results</strong> in the last 24 hours. This could be positive (viral reach) or may need your attention.</p><p><strong>Bishop Hank's Assessment:</strong></p><p>{{9.hank_report}}</p><p><strong>Top Mentions:</strong><br>{{7.top_mentions}}</p><p>Review and respond if needed. If this is positive press, Donte should amplify it immediately.</p><p>— Bishop Hank (Security & Monitoring)</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1400, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

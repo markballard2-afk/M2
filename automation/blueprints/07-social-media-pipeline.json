@@ -1,0 +1,191 @@
+{
+  "name": "WNZN Power - Social Media Content Approval Pipeline (Donte → Barbara/Nana)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "notion:watchDatabaseItems",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_SOCIAL_CONTENT_DATABASE_ID"
+      },
+      "mapper": {
+        "filter": {
+          "property": "Status",
+          "select": { "equals": "Ready for Review" }
+        }
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 },
+        "notes": "Watches Notion content calendar DB. Triggers when Donte sets Status to 'Ready for Review'"
+      }
+    },
+    {
+      "id": 2,
+      "module": "notion:getPage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID"
+      },
+      "mapper": {
+        "pageId": "{{1.id}}"
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "BARBARA_EMAIL",
+        "cc": "DR_BALLARD_EMAIL",
+        "subject": "Content Review Needed — {{2.properties.Title.title[].plain_text}} ({{2.properties.Platform.select.name}})",
+        "bodyType": "html",
+        "body": "<p>Barbara,</p><p>Donte has submitted a post for your review.</p><p><strong>Platform:</strong> {{2.properties.Platform.select.name}}<br><strong>Scheduled Date:</strong> {{formatDate(2.properties.Post_Date.date.start; 'MMMM D, YYYY')}}<br><strong>Caption:</strong></p><blockquote>{{2.properties.Caption.rich_text[].plain_text}}</blockquote><p><strong>Hashtags:</strong> {{2.properties.Hashtags.rich_text[].plain_text}}</p><p><strong>Visual/Image note:</strong> {{2.properties.Visual_Notes.rich_text[].plain_text}}</p><p>To approve: Open the Notion page and change Status to <strong>Approved</strong>.<br>To request edits: Change Status to <strong>Needs Edit</strong> and add a comment with your notes.</p><p><a href='{{2.url}}'>Open in Notion →</a></p><p>— Jessie (Automation Systems)</p>"
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "notion:watchDatabaseItems",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_SOCIAL_CONTENT_DATABASE_ID"
+      },
+      "mapper": {
+        "filter": {
+          "property": "Status",
+          "select": { "equals": "Approved" }
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": -100 },
+        "notes": "Second watch trigger — fires when Barbara changes status to Approved"
+      }
+    },
+    {
+      "id": 5,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Post is Approved",
+        "condition": {
+          "leftValue": "{{4.properties.Status.select.name}}",
+          "operator": "equal",
+          "rightValue": "Approved"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": -100 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_CONTENT_CHANNEL_ID",
+        "text": "✅ *Post Approved* — {{4.properties.Title.title[].plain_text}}\n\n*Platform:* {{4.properties.Platform.select.name}}\n*Scheduled:* {{formatDate(4.properties.Post_Date.date.start; 'MMMM D, YYYY')}}\n\nCaption approved by Barbara. Ready to schedule.\n\n<{{4.url}}|View in Notion>"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": -100 }
+      }
+    },
+    {
+      "id": 7,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DONTE_EMAIL",
+        "subject": "✅ Approved — {{4.properties.Title.title[].plain_text}} is cleared to post",
+        "bodyType": "html",
+        "body": "<p>Donte,</p><p>Barbara approved the post. It's cleared to go live on <strong>{{formatDate(4.properties.Post_Date.date.start; 'MMMM D, YYYY')}}</strong> on <strong>{{4.properties.Platform.select.name}}</strong>.</p><p>Schedule it in Buffer/Later and mark the Notion page as <strong>Scheduled</strong>.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": -100 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "notion:watchDatabaseItems",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_SOCIAL_CONTENT_DATABASE_ID"
+      },
+      "mapper": {
+        "filter": {
+          "property": "Status",
+          "select": { "equals": "Needs Edit" }
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 100 },
+        "notes": "Third watch trigger — fires when Barbara marks post as Needs Edit"
+      }
+    },
+    {
+      "id": 9,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Post Needs Edit",
+        "condition": {
+          "leftValue": "{{8.properties.Status.select.name}}",
+          "operator": "equal",
+          "rightValue": "Needs Edit"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 100 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DONTE_EMAIL",
+        "subject": "✏️ Edits Needed — {{8.properties.Title.title[].plain_text}}",
+        "bodyType": "html",
+        "body": "<p>Donte,</p><p>Barbara reviewed the post and has requested edits before it can be approved.</p><p><strong>Post:</strong> {{8.properties.Title.title[].plain_text}}<br><strong>Platform:</strong> {{8.properties.Platform.select.name}}</p><p>Check the Notion page for her comments, make the revisions, and re-submit by setting Status back to <strong>Ready for Review</strong>.</p><p><a href='{{8.url}}'>Open in Notion →</a></p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 100 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

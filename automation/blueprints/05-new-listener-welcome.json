@@ -1,0 +1,138 @@
+{
+  "name": "WNZN Power - New Listener Welcome Sequence",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hookId": "YOUR_WEBHOOK_ID_NEW_LISTENER"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 }
+      }
+    },
+    {
+      "id": 2,
+      "module": "mailchimp:addOrUpdateMember",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_MAILCHIMP_CONNECTION_ID",
+        "listId": "YOUR_MAILCHIMP_LIST_ID"
+      },
+      "mapper": {
+        "emailAddress": "{{1.email}}",
+        "status": "subscribed",
+        "mergeFields": {
+          "FNAME": "{{1.firstname}}",
+          "LNAME": "{{1.lastname}}",
+          "PHONE": "{{1.phone}}",
+          "ZIP": "{{1.zip}}"
+        },
+        "tags": ["New Listener", "WNZN.org Signup", "{{formatDate(now; 'YYYY')}}"]
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "hubspot:createOrUpdateContact",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "email": "{{1.email}}",
+        "properties": {
+          "firstname": "{{1.firstname}}",
+          "lastname": "{{1.lastname}}",
+          "phone": "{{1.phone}}",
+          "zip": "{{1.zip}}",
+          "hs_lead_status": "NEW",
+          "lead_source": "WNZN.org Signup"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "Welcome to WNZN Power 89.1 — You're Home",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>Welcome to the WNZN Power family.</p><p>You're now connected to 89.1 FM — Lorain, Ohio's home for gospel music, inspiration, and community. Whether you found us on the radio, online, or through a friend, we're glad you're here.</p><p><strong>A few ways to stay connected:</strong></p><ul><li>Listen live at <a href='https://wnzn.org'>WNZN.org</a> anytime, anywhere</li><li>Download the Power Gospel Network app for on-demand content</li><li>Follow us on Facebook and Instagram for daily encouragement</li><li>Join us for live events — we'll keep you posted</li></ul><p>If you ever have a prayer request, a song you'd like to hear, or just want to say hello — reach out. This station was built for this community, and you are why we do what we do.</p><p>God bless you,<br><br><strong>Dr. Mark A. Ballard, Sr.</strong><br>Founder & CEO, P.A.C.E. Foundation<br>WNZN Power 89.1 FM | Lorain, Ohio</p>"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_CHANNEL_ID",
+        "text": "👋 *New Listener Signup* — {{1.firstname}} {{1.lastname}} ({{1.email}}) just joined the WNZN Power family via WNZN.org. Welcome email sent. Added to Mailchimp + HubSpot."
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "builtin:Sleep",
+      "version": 1,
+      "parameters": {
+        "delay": 604800
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 },
+        "notes": "Wait 7 days before follow-up email"
+      }
+    },
+    {
+      "id": 7,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "How's your first week with WNZN Power?",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>It's been a week since you joined us — and we just wanted to check in.</p><p>If you haven't already, here are a few things worth exploring:</p><ul><li><strong>Listen live:</strong> <a href='https://wnzn.org'>WNZN.org</a> — 24/7 gospel music and encouragement</li><li><strong>PGN App:</strong> Power Gospel Network — on-demand content, anytime</li><li><strong>Upcoming events:</strong> We host community events throughout the year — watch for your invitation</li></ul><p>And if there's anything specific you'd love to hear more of on WNZN Power, reply to this email and let us know. Your voice matters here.</p><p>Thank you for being part of what we're building in Lorain, Ohio.</p><p>With gratitude,<br><strong>Dr. Mark A. Ballard, Sr.</strong><br>WNZN Power 89.1 FM</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

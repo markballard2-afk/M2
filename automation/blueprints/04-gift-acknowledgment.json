@@ -1,0 +1,154 @@
+{
+  "name": "WNZN Power - Gift Acknowledgment & Stewardship Chain",
+  "flow": [
+    {
+      "id": 1,
+      "module": "hubspot:watchDealStageChanges",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID",
+        "pipelineId": "YOUR_DONOR_PIPELINE_ID",
+        "stageId": "YOUR_GIFT_RECEIVED_STAGE_ID"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 }
+      }
+    },
+    {
+      "id": 2,
+      "module": "hubspot:getDeal",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "dealId": "{{1.objectId}}",
+        "properties": ["dealname", "amount", "closedate", "associated_contact_id", "hs_object_id"]
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "hubspot:getContact",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "contactId": "{{2.associated_contact_id}}",
+        "properties": ["firstname", "lastname", "email", "phone"]
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "notion:createPageInDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "title": "🔴 CALL TODAY — {{3.firstname}} {{3.lastname}} — Gift Received ${{2.amount}}",
+        "properties": {
+          "Assigned To": "Dr. Ballard",
+          "Priority": "Urgent",
+          "Due Date": "{{formatDate(now; 'YYYY-MM-DD')}}",
+          "Notes": "Gift of ${{2.amount}} received from {{3.firstname}} {{3.lastname}}. Call personally today. Do not delegate. Phone: {{3.phone}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_CHANNEL_ID",
+        "text": "🎉 *GIFT RECEIVED* — ${{2.amount}} from {{3.firstname}} {{3.lastname}}\n\n*Action required:* Dr. Ballard calls today. Moriah sends ack letter within 48 hours.\n\nDeal: {{2.dealname}}"
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "twilio:createMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_TWILIO_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DR_BALLARD_PHONE",
+        "from": "YOUR_TWILIO_NUMBER",
+        "body": "WNZN Power: Gift received — ${{2.amount}} from {{3.firstname}} {{3.lastname}}. Please call them today. — Jessie"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 }
+      }
+    },
+    {
+      "id": 7,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "MORIAH_EMAIL",
+        "subject": "Gift Received — Acknowledgment Letter Needed: {{3.firstname}} {{3.lastname}}",
+        "bodyType": "html",
+        "body": "<p>Moriah,</p><p>A gift has been received. Please prepare and mail the acknowledgment letter within 48 hours.</p><p><strong>Donor:</strong> {{3.firstname}} {{3.lastname}}<br><strong>Amount:</strong> ${{2.amount}}<br><strong>Date Received:</strong> {{formatDate(now; 'MMMM D, YYYY')}}<br><strong>Email:</strong> {{3.email}}</p><p>Use the acknowledgment letter template in the donor cultivation document. Include P.A.C.E. Foundation EIN and the IRS statement that no goods or services were exchanged.</p><p>Log the letter date in HubSpot when sent.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "mailchimp:addOrUpdateMember",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_MAILCHIMP_CONNECTION_ID",
+        "listId": "YOUR_MAILCHIMP_LIST_ID"
+      },
+      "mapper": {
+        "emailAddress": "{{3.email}}",
+        "status": "subscribed",
+        "mergeFields": {
+          "FNAME": "{{3.firstname}}",
+          "LNAME": "{{3.lastname}}"
+        },
+        "tags": ["Major Donor", "{{formatDate(now; 'YYYY')}} Donor"]
+      },
+      "metadata": {
+        "designer": { "x": 1400, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

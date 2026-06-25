@@ -1,0 +1,255 @@
+{
+  "name": "WNZN Power - Donor Cultivation Sequence (Moriah)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "hubspot:watchContactPropertyChange",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID",
+        "propertyName": "wnzn_cultivation_stage"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 }
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Touch 1 Complete — Schedule Touch 2",
+        "condition": {
+          "leftValue": "{{1.propertyValue}}",
+          "operator": "equal",
+          "rightValue": "touch_1_complete"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": -200 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "MORIAH_EMAIL",
+        "subject": "Cultivation Task: Schedule Touch 2 for {{1.firstname}} {{1.lastname}}",
+        "bodyType": "html",
+        "body": "<p>Moriah,</p><p>Dr. Ballard completed the discovery call (Touch 1) with <strong>{{1.firstname}} {{1.lastname}}</strong>.</p><p><strong>Next step:</strong> Schedule a station tour or coffee meeting within the next 2 weeks. Use the Touch 2 script from the donor cultivation document.</p><p>Contact: {{1.email}} | {{1.phone}}</p><p>Log the meeting date in HubSpot when confirmed.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": -200 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "notion:createPageInDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "title": "Schedule Touch 2 — {{1.firstname}} {{1.lastname}} (Donor Cultivation)",
+        "properties": {
+          "Assigned To": "Moriah",
+          "Priority": "High",
+          "Due Date": "{{formatDate(addDays(now; 5); 'YYYY-MM-DD')}}",
+          "Notes": "Touch 1 complete. Schedule station tour or coffee for Touch 2. Goal: within 2 weeks."
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": -200 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Touch 2 Complete — Send Impact Document",
+        "condition": {
+          "leftValue": "{{1.propertyValue}}",
+          "operator": "equal",
+          "rightValue": "touch_2_complete"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 7,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "cc": "MORIAH_EMAIL",
+        "subject": "What WNZN Power 89.1 Means to Lorain, Ohio",
+        "bodyType": "html",
+        "body": "<p>Dear {{1.firstname}},</p><p>Thank you for spending time with us recently. It was a genuine pleasure getting to know you and sharing what we're building.</p><p>I wanted to send along a brief overview of WNZN Power and what your support makes possible for the people of Lorain, Ohio.</p><p>I've attached our impact document for your review. And if you have any questions about what we do or how we do it, please don't hesitate to reach out.</p><p>I look forward to staying in touch.</p><p>With gratitude,<br>Dr. Mark A. Ballard, Sr.<br>Founder & CEO, P.A.C.E. Foundation<br>WNZN Power 89.1 FM</p><p><em>[Attach: WNZN Power Impact One-Pager PDF]</em></p>"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "notion:createPageInDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "title": "Follow up — Did {{1.firstname}} receive impact doc? (5 days)",
+        "properties": {
+          "Assigned To": "Moriah",
+          "Priority": "Medium",
+          "Due Date": "{{formatDate(addDays(now; 5); 'YYYY-MM-DD')}}",
+          "Notes": "Impact document sent today. Check in with prospect in 5 days. Confirm receipt, answer questions, set up Touch 4 event invitation."
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 9,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Touch 4 Complete — Trigger Handwritten Note Reminder",
+        "condition": {
+          "leftValue": "{{1.propertyValue}}",
+          "operator": "equal",
+          "rightValue": "touch_4_complete"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 200 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "twilio:createMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_TWILIO_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DR_BALLARD_PHONE",
+        "from": "YOUR_TWILIO_NUMBER",
+        "body": "WNZN Cultivation: {{1.firstname}} {{1.lastname}} attended the event (Touch 4 complete). Time for a handwritten note from you. Moriah has their address. — Jessie"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 200 }
+      }
+    },
+    {
+      "id": 11,
+      "module": "notion:createPageInDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "title": "✍️ WRITE HANDWRITTEN NOTE — {{1.firstname}} {{1.lastname}}",
+        "properties": {
+          "Assigned To": "Dr. Ballard",
+          "Priority": "High",
+          "Due Date": "{{formatDate(addDays(now; 3); 'YYYY-MM-DD')}}",
+          "Notes": "3-4 sentences. Warm. Personal. Thank them for attending. Tell them you look forward to continuing the conversation. Sign it. Moriah will get the mailing address."
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 200 }
+      }
+    },
+    {
+      "id": 12,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "Touch 5 Complete — Flag as Ask Ready",
+        "condition": {
+          "leftValue": "{{1.propertyValue}}",
+          "operator": "equal",
+          "rightValue": "touch_5_complete"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 400 }
+      }
+    },
+    {
+      "id": 13,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "MORIAH_EMAIL",
+        "subject": "🟢 ASK READY — {{1.firstname}} {{1.lastname}}",
+        "bodyType": "html",
+        "body": "<p>Moriah,</p><p><strong>{{1.firstname}} {{1.lastname}}</strong> has completed all 5 cultivation touches and is ready for the ask.</p><p>Next step: Schedule a conversation for Dr. Ballard to make the ask personally — in person preferred, by phone if needed.</p><p>Review the ask script in the donor cultivation document before the call. Prepare a specific dollar amount based on your assessment of their capacity.</p><p>Create the HubSpot task for Dr. Ballard and confirm the date with Kalisha for scheduling.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 400 }
+      }
+    },
+    {
+      "id": 14,
+      "module": "hubspot:updateContact",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "contactId": "{{1.objectId}}",
+        "properties": {
+          "hs_lead_status": "IN_PROGRESS",
+          "wnzn_cultivation_stage": "ask_ready"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 400 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

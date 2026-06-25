@@ -1,0 +1,218 @@
+{
+  "name": "WNZN Power - Underwriting Renewal Alerts (Terrence)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "builtin:BasicScheduleTrigger",
+      "version": 1,
+      "parameters": {
+        "interval": [
+          {
+            "unit": "day",
+            "value": 1
+          }
+        ],
+        "time": "07:00"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 },
+        "restore": { "parameters": { "interval": { "label": "Every 1 day" } } }
+      }
+    },
+    {
+      "id": 2,
+      "module": "hubspot:searchDeals",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "propertyName": "pipeline",
+                "operator": "EQ",
+                "value": "YOUR_HUBSPOT_PIPELINE_ID"
+              },
+              {
+                "propertyName": "dealstage",
+                "operator": "EQ",
+                "value": "YOUR_HUBSPOT_STAGE_ID_ACTIVE"
+              }
+            ]
+          }
+        ],
+        "properties": ["dealname", "closedate", "hubspot_owner_id", "amount", "hs_object_id"]
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "90 days until expiry",
+        "condition": {
+          "leftValue": "{{formatDate(addDays(now; 90); 'YYYY-MM-DD')}}",
+          "operator": "equal",
+          "rightValue": "{{formatDate(2.closedate; 'YYYY-MM-DD')}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": -150 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "hubspot:createTask",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "hs_task_subject": "RENEWAL CALL NEEDED — {{2.dealname}} expires in 90 days",
+        "hs_task_body": "Contract expires on {{formatDate(2.closedate; 'MMMM D, YYYY')}}. Call this week to begin renewal conversation. Use the Premier/Supporter/Community upgrade script.",
+        "hs_task_status": "NOT_STARTED",
+        "hs_task_priority": "HIGH",
+        "hubspot_owner_id": "{{2.hubspot_owner_id}}",
+        "associations": [
+          {
+            "to": { "id": "{{2.hs_object_id}}" },
+            "types": [{ "associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 216 }]
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": -150 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "TERRENCE_EMAIL",
+        "subject": "⚠️ Renewal Alert: {{2.dealname}} — 90 Days",
+        "bodyType": "html",
+        "body": "<p>Terrence,</p><p><strong>{{2.dealname}}</strong> has a contract expiring on <strong>{{formatDate(2.closedate; 'MMMM D, YYYY')}}</strong> — that's 90 days from today.</p><p>Action needed: Call this week. Use the upgrade conversation if they've been a good partner. Current deal value: ${{2.amount}}</p><p>Log your call in HubSpot and mark the task complete.</p><p>— Jessie (Automation Systems)</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": -150 }
+      }
+    },
+    {
+      "id": 7,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "60 days until expiry",
+        "condition": {
+          "leftValue": "{{formatDate(addDays(now; 60); 'YYYY-MM-DD')}}",
+          "operator": "equal",
+          "rightValue": "{{formatDate(2.closedate; 'YYYY-MM-DD')}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "TERRENCE_EMAIL",
+        "subject": "🔔 60-Day Renewal: {{2.dealname}}",
+        "bodyType": "html",
+        "body": "<p>Terrence,</p><p><strong>{{2.dealname}}</strong> renews in 60 days (<strong>{{formatDate(2.closedate; 'MMMM D, YYYY')}}</strong>).</p><p>If you haven't had a renewal conversation yet, this week is the window. Consider the upgrade pitch — Premier Partner is $15K/year.</p><p>Also: Louise should be looped in if they haven't responded to the 90-day outreach.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 9,
+      "module": "builtin:BasicFilter",
+      "version": 1,
+      "parameters": {
+        "label": "30 days until expiry",
+        "condition": {
+          "leftValue": "{{formatDate(addDays(now; 30); 'YYYY-MM-DD')}}",
+          "operator": "equal",
+          "rightValue": "{{formatDate(2.closedate; 'YYYY-MM-DD')}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 150 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "TERRENCE_EMAIL",
+        "subject": "🚨 FINAL 30 DAYS: {{2.dealname}} Renewal",
+        "bodyType": "html",
+        "body": "<p>Terrence,</p><p><strong>{{2.dealname}}</strong> expires in 30 days. If a renewal agreement is not signed, Louise needs to send the renewal invoice this week.</p><p>If you are having trouble closing this renewal, escalate to Papa Ballard immediately — do not let this lapse without a conversation.</p><p>Contract end date: <strong>{{formatDate(2.closedate; 'MMMM D, YYYY')}}</strong><br>Deal value: ${{2.amount}}</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 150 }
+      }
+    },
+    {
+      "id": 11,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "PAPA_EMAIL",
+        "subject": "⚠️ Renewal Escalation: {{2.dealname}} — 30 Days Left",
+        "bodyType": "html",
+        "body": "<p>Papa,</p><p>FYI: <strong>{{2.dealname}}</strong> underwriting contract expires in 30 days. Terrence has been alerted. Flagging so you have visibility in case it needs your attention.</p><p>— Jessie</p>"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 150 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

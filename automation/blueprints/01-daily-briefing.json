@@ -1,0 +1,235 @@
+{
+  "name": "WNZN Power - Daily Briefing (6:30 AM Rise & Run)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "builtin:BasicScheduleTrigger",
+      "version": 1,
+      "parameters": {
+        "interval": [{ "unit": "day", "value": 1 }],
+        "time": "06:00"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 }
+      }
+    },
+    {
+      "id": 2,
+      "module": "hubspot:searchDeals",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "propertyName": "dealstage",
+                "operator": "IN",
+                "values": ["YOUR_ACTIVE_STAGE_ID", "YOUR_NEGOTIATING_STAGE_ID"]
+              }
+            ]
+          }
+        ],
+        "properties": ["dealname", "amount", "dealstage", "closedate"],
+        "limit": 10
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "google-calendar:listEvents",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GOOGLE_CALENDAR_CONNECTION_ID"
+      },
+      "mapper": {
+        "calendarId": "primary",
+        "timeMin": "{{formatDate(now; 'YYYY-MM-DD')}}T00:00:00Z",
+        "timeMax": "{{formatDate(now; 'YYYY-MM-DD')}}T23:59:59Z",
+        "singleEvents": true,
+        "orderBy": "startTime"
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "notion:queryDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "filter": {
+          "and": [
+            {
+              "property": "Status",
+              "select": { "does_not_equal": "Completed" }
+            },
+            {
+              "property": "Priority",
+              "select": { "equals": "Urgent" }
+            }
+          ]
+        },
+        "sorts": [{ "property": "Due Date", "direction": "ascending" }],
+        "page_size": 5
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "builtin:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "variables": [
+          {
+            "name": "hubspot_deals_summary",
+            "value": "{{join(map(2.results; 'dealname' + ': $' + 'amount'); ', ')}}"
+          },
+          {
+            "name": "calendar_events",
+            "value": "{{join(map(3.items; 'summary' + ' at ' + formatDate('start.dateTime'; 'h:mm A')); ' | ')}}"
+          },
+          {
+            "name": "urgent_tasks",
+            "value": "{{join(map(4.results; 'properties.Title.title[].plain_text'); ' | ')}}"
+          },
+          {
+            "name": "todays_date",
+            "value": "{{formatDate(now; 'dddd, MMMM D, YYYY')}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": true
+      },
+      "mapper": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "headers": [
+          { "name": "x-api-key", "value": "YOUR_ANTHROPIC_API_KEY" },
+          { "name": "anthropic-version", "value": "2023-06-01" },
+          { "name": "content-type", "value": "application/json" }
+        ],
+        "bodyType": "raw",
+        "contentType": "application/json",
+        "body": "{\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 400,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are the WNZN Power Mission Control morning briefing system for Dr. Mark Ballard in Lorain, Ohio. Generate a 90-second spoken briefing script.\\n\\nVoice: Warm, direct, plain-spoken. Like a trusted colleague giving a quick rundown. No corporate language. Short sentences. Faith-aware but not preachy.\\n\\nDATA:\\nDate: {{5.todays_date}}\\nCalendar today: {{5.calendar_events}}\\nActive deals in HubSpot: {{5.hubspot_deals_summary}}\\nUrgent tasks: {{5.urgent_tasks}}\\n\\nStructure:\\n1. Good morning greeting (1-2 sentences, include day and date)\\n2. Today's schedule (what's on the calendar - be specific)\\n3. Revenue snapshot (what's active in the pipeline)\\n4. One thing that needs Dr. Ballard's personal attention today (pick the most urgent task)\\n5. Close with one grounding sentence — real, not preachy\\n\\nKeep it under 230 words. Sound like a person, not a report. Do not use bullet points — this will be read aloud.\"\n    }\n  ]\n}"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 }
+      }
+    },
+    {
+      "id": 7,
+      "module": "builtin:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "variables": [
+          {
+            "name": "briefing_script",
+            "value": "{{6.body.content[].text}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": true
+      },
+      "mapper": {
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/YOUR_ELEVENLABS_VOICE_ID",
+        "method": "POST",
+        "headers": [
+          { "name": "xi-api-key", "value": "YOUR_ELEVENLABS_API_KEY" },
+          { "name": "content-type", "value": "application/json" }
+        ],
+        "bodyType": "raw",
+        "contentType": "application/json",
+        "body": "{\n  \"text\": \"{{7.briefing_script}}\",\n  \"model_id\": \"eleven_turbo_v2\",\n  \"voice_settings\": {\n    \"stability\": 0.6,\n    \"similarity_boost\": 0.8,\n    \"style\": 0.3,\n    \"use_speaker_boost\": true\n  }\n}",
+        "responseType": "buffer"
+      },
+      "metadata": {
+        "designer": { "x": 1400, "y": 0 }
+      }
+    },
+    {
+      "id": 9,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "DR_BALLARD_EMAIL",
+        "subject": "☀️ WNZN Power | Good Morning, Dr. Ballard — {{formatDate(now; 'dddd, MMMM D')}}",
+        "bodyType": "html",
+        "body": "<h2>Rise & Run — {{formatDate(now; 'MMMM D, YYYY')}}</h2><p>Your morning briefing audio is attached. Text version below.</p><hr><p>{{7.briefing_script}}</p><hr><p><strong>Today's Calendar:</strong> {{5.calendar_events}}</p><p><strong>Urgent Tasks:</strong> {{5.urgent_tasks}}</p><br><p style='color:#888; font-size:12px;'>— WNZN Power Mission Control | Jessie + Marleigh</p>",
+        "attachments": [
+          {
+            "fileName": "briefing-{{formatDate(now; 'YYYY-MM-DD')}}-AM.mp3",
+            "data": "{{8.body}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 1600, "y": 0 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_BRIEFING_CHANNEL_ID",
+        "text": "☀️ *Morning Briefing — {{formatDate(now; 'MMMM D, YYYY')}}*\n\n{{7.briefing_script}}\n\n_Full briefing + audio sent to Dr. Ballard's email._"
+      },
+      "metadata": {
+        "designer": { "x": 1800, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

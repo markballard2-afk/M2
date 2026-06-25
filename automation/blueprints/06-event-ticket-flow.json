@@ -1,0 +1,195 @@
+{
+  "name": "WNZN Power - Event Ticket Confirmation & Reminder Flow",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hookId": "YOUR_WEBHOOK_ID_TICKET_PURCHASE"
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 },
+        "notes": "Webhook fired by ticketing platform (Eventbrite, Stripe, etc.) on purchase"
+      }
+    },
+    {
+      "id": 2,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "You're in! — {{1.event_name}} Ticket Confirmation",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>Your ticket is confirmed. We can't wait to see you.</p><p><strong>Event:</strong> {{1.event_name}}<br><strong>Date:</strong> {{formatDate(1.event_date; 'dddd, MMMM D, YYYY')}}<br><strong>Time:</strong> {{1.event_time}}<br><strong>Location:</strong> {{1.event_location}}<br><strong>Ticket:</strong> #{{1.ticket_number}}</p><p>Please bring this email (printed or on your phone) as your ticket. Doors open 30 minutes before start time.</p><p>If you have any questions, reply to this email or call us at {{1.venue_phone}}.</p><p>Thank you for supporting WNZN Power and the P.A.C.E. Foundation. Events like this are possible because of people like you.</p><p>See you there,<br><strong>Dr. Mark A. Ballard, Sr.</strong><br>WNZN Power 89.1 FM | Lorain, Ohio</p>"
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 }
+      }
+    },
+    {
+      "id": 3,
+      "module": "mailchimp:addOrUpdateMember",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_MAILCHIMP_CONNECTION_ID",
+        "listId": "YOUR_MAILCHIMP_LIST_ID"
+      },
+      "mapper": {
+        "emailAddress": "{{1.email}}",
+        "status": "subscribed",
+        "mergeFields": {
+          "FNAME": "{{1.firstname}}",
+          "LNAME": "{{1.lastname}}"
+        },
+        "tags": ["Event Attendee", "{{1.event_name}}", "{{formatDate(now; 'YYYY')}} Events"]
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 }
+      }
+    },
+    {
+      "id": 4,
+      "module": "hubspot:createOrUpdateContact",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "email": "{{1.email}}",
+        "properties": {
+          "firstname": "{{1.firstname}}",
+          "lastname": "{{1.lastname}}",
+          "phone": "{{1.phone}}",
+          "hs_lead_status": "OPEN",
+          "lead_source": "Event Ticket Purchase",
+          "wnzn_last_event": "{{1.event_name}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 5,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_CHANNEL_ID",
+        "text": "🎟️ *Ticket Sold* — {{1.firstname}} {{1.lastname}} purchased a ticket to {{1.event_name}}. Confirmation sent. Added to Mailchimp + HubSpot."
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 6,
+      "module": "builtin:Sleep",
+      "version": 1,
+      "parameters": {
+        "delay": 518400
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 },
+        "notes": "Wait until 7 days before event (calculated from purchase — adjust based on event date logic)"
+      }
+    },
+    {
+      "id": 7,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "One Week Away — {{1.event_name}} | WNZN Power",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>One week from today, we're gathering for {{1.event_name}} — and your seat is reserved.</p><p><strong>Quick reminder:</strong><br>📅 {{formatDate(1.event_date; 'dddd, MMMM D, YYYY')}}<br>🕐 {{1.event_time}}<br>📍 {{1.event_location}}</p><p>Bring a friend if you haven't already — this is the kind of night worth sharing.</p><p>We'll see you there.<br><strong>WNZN Power 89.1 FM</strong></p>"
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "builtin:Sleep",
+      "version": 1,
+      "parameters": {
+        "delay": 518400
+      },
+      "metadata": {
+        "designer": { "x": 1400, "y": 0 },
+        "notes": "Wait until 1 day before event"
+      }
+    },
+    {
+      "id": 9,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "Tomorrow Night — {{1.event_name}} | Doors Open at {{1.doors_open_time}}",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>Tomorrow's the night.</p><p>Here's everything you need to know:</p><p>📅 <strong>{{formatDate(1.event_date; 'MMMM D, YYYY')}}</strong><br>🚪 <strong>Doors open:</strong> {{1.doors_open_time}}<br>🕐 <strong>Show starts:</strong> {{1.event_time}}<br>📍 <strong>Location:</strong> {{1.event_location}}<br>🎟️ <strong>Your ticket:</strong> #{{1.ticket_number}}</p><p>Bring this email (on your phone is fine) to check in at the door.</p><p>We'll see you tomorrow night. Come ready to be blessed.<br><strong>WNZN Power 89.1 FM</strong></p>"
+      },
+      "metadata": {
+        "designer": { "x": 1600, "y": 0 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "builtin:Sleep",
+      "version": 1,
+      "parameters": {
+        "delay": 259200
+      },
+      "metadata": {
+        "designer": { "x": 1800, "y": 0 },
+        "notes": "Wait 3 days after event"
+      }
+    },
+    {
+      "id": 11,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "{{1.email}}",
+        "subject": "Thank You for Being There — {{1.event_name}}",
+        "bodyType": "html",
+        "body": "<p>{{1.firstname}},</p><p>Thank you for joining us at {{1.event_name}}.</p><p>Nights like that happen because people like you choose to show up — and that means something to us. The P.A.C.E. Foundation exists to serve this community, and your presence is a reminder of why we do what we do.</p><p>If you'd like to go deeper with what we're building at WNZN Power 89.1 FM, here are a few ways to stay connected:</p><ul><li><strong>Listen live:</strong> <a href='https://wnzn.org'>WNZN.org</a></li><li><strong>Support our mission:</strong> <a href='https://wnzn.org/donate'>WNZN.org/donate</a></li><li><strong>Follow us:</strong> Facebook and Instagram @WNZNPower</li></ul><p>We hope to see you at the next one. Stay tuned — more is coming.</p><p>With gratitude,<br><strong>Dr. Mark A. Ballard, Sr.</strong><br>Founder & CEO, P.A.C.E. Foundation<br>WNZN Power 89.1 FM | Lorain, Ohio</p>"
+      },
+      "metadata": {
+        "designer": { "x": 2000, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}

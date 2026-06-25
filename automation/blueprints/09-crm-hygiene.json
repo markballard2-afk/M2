@@ -1,0 +1,269 @@
+{
+  "name": "WNZN Power - Weekly CRM Hygiene & Stuck Deal Alerts (Seven + Papa)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "builtin:BasicScheduleTrigger",
+      "version": 1,
+      "parameters": {
+        "interval": [{ "unit": "week", "value": 1 }],
+        "time": "07:00",
+        "dayOfWeek": 1
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 },
+        "notes": "Runs every Monday at 7 AM"
+      }
+    },
+    {
+      "id": 2,
+      "module": "hubspot:searchContacts",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "propertyName": "lastmodifieddate",
+                "operator": "LT",
+                "value": "{{formatDate(addDays(now; -60); 'x')}}"
+              },
+              {
+                "propertyName": "hs_lead_status",
+                "operator": "NOT_IN",
+                "values": ["UNQUALIFIED", "CLOSED"]
+              }
+            ]
+          }
+        ],
+        "properties": ["firstname", "lastname", "email", "hs_lead_status", "lastmodifieddate"],
+        "limit": 50
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": -150 },
+        "notes": "Find contacts with no activity in 60+ days that aren't closed/disqualified"
+      }
+    },
+    {
+      "id": 3,
+      "module": "hubspot:updateContact",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "contactId": "{{2.hs_object_id}}",
+        "properties": {
+          "hs_lead_status": "IN_PROGRESS",
+          "wnzn_needs_review": "true",
+          "wnzn_flagged_date": "{{formatDate(now; 'YYYY-MM-DD')}}"
+        }
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": -150 },
+        "notes": "Tag stale contacts for review"
+      }
+    },
+    {
+      "id": 4,
+      "module": "hubspot:searchDeals",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "propertyName": "hs_lastmodifieddate",
+                "operator": "LT",
+                "value": "{{formatDate(addDays(now; -30); 'x')}}"
+              },
+              {
+                "propertyName": "dealstage",
+                "operator": "NOT_IN",
+                "values": ["closedwon", "closedlost"]
+              }
+            ]
+          }
+        ],
+        "properties": ["dealname", "amount", "dealstage", "closedate", "hubspot_owner_id", "hs_lastmodifieddate"],
+        "limit": 25
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 0 },
+        "notes": "Find open deals with no activity in 30+ days"
+      }
+    },
+    {
+      "id": 5,
+      "module": "hubspot:createTask",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "hs_task_subject": "STUCK DEAL REVIEW — {{4.dealname}} (no activity {{formatDate(addDays(now; -30); 'MMMM D')}} – today)",
+        "hs_task_body": "This deal has had no updates in 30+ days. Current stage: {{4.dealstage}}. Amount: ${{4.amount}}. Review and either advance, flag for escalation, or close as lost. Do not let deals sit untouched.",
+        "hs_task_status": "NOT_STARTED",
+        "hs_task_priority": "HIGH",
+        "hs_task_type": "CALL",
+        "hubspot_owner_id": "{{4.hubspot_owner_id}}",
+        "hs_timestamp": "{{formatDate(now; 'x')}}",
+        "associations": [
+          {
+            "to": { "id": "{{4.hs_object_id}}" },
+            "types": [{ "associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 216 }]
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 400, "y": 0 },
+        "notes": "Create HubSpot task for each stuck deal owner"
+      }
+    },
+    {
+      "id": 6,
+      "module": "hubspot:searchDeals",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_HUBSPOT_CONNECTION_ID"
+      },
+      "mapper": {
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "propertyName": "closedate",
+                "operator": "LT",
+                "value": "{{formatDate(now; 'x')}}"
+              },
+              {
+                "propertyName": "dealstage",
+                "operator": "NOT_IN",
+                "values": ["closedwon", "closedlost"]
+              }
+            ]
+          }
+        ],
+        "properties": ["dealname", "amount", "closedate", "hubspot_owner_id"],
+        "limit": 25
+      },
+      "metadata": {
+        "designer": { "x": 200, "y": 150 },
+        "notes": "Find deals with past-due close dates still marked as open"
+      }
+    },
+    {
+      "id": 7,
+      "module": "builtin:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "variables": [
+          {
+            "name": "stale_contacts_count",
+            "value": "{{length(2.results)}}"
+          },
+          {
+            "name": "stuck_deals_count",
+            "value": "{{length(4.results)}}"
+          },
+          {
+            "name": "overdue_deals_count",
+            "value": "{{length(6.results)}}"
+          },
+          {
+            "name": "stuck_deals_summary",
+            "value": "{{join(map(4.results; 'dealname' + ' — $' + 'amount' + ' (' + 'dealstage' + ')'); '\n')}}"
+          },
+          {
+            "name": "overdue_deals_summary",
+            "value": "{{join(map(6.results; 'dealname' + ' — $' + 'amount' + ' | Due: ' + formatDate('closedate'; 'MMM D')); '\n')}}"
+          },
+          {
+            "name": "week_of",
+            "value": "{{formatDate(now; 'MMMM D, YYYY')}}"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": { "x": 600, "y": 0 }
+      }
+    },
+    {
+      "id": 8,
+      "module": "gmail:sendEmail",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_GMAIL_CONNECTION_ID"
+      },
+      "mapper": {
+        "to": "PAPA_EMAIL",
+        "cc": "DR_BALLARD_EMAIL",
+        "subject": "📊 Weekly CRM Health Report — Week of {{7.week_of}}",
+        "bodyType": "html",
+        "body": "<p>Papa,</p><p>Here's the weekly CRM health check from Seven.</p><hr><h3>Summary</h3><p>🔴 <strong>Stale contacts flagged for review:</strong> {{7.stale_contacts_count}} (no activity 60+ days)<br>🟡 <strong>Stuck open deals:</strong> {{7.stuck_deals_count}} (no updates in 30+ days)<br>🔴 <strong>Overdue deals (past close date):</strong> {{7.overdue_deals_count}}</p><hr><h3>Stuck Deals (30+ days no activity)</h3><pre>{{7.stuck_deals_summary}}</pre><p>HubSpot tasks have been created for each deal owner.</p><hr><h3>Past-Due Deals (close date already passed)</h3><pre>{{7.overdue_deals_summary}}</pre><p>These need to be either closed won, closed lost, or close date updated. Dead deals clog the pipeline.</p><hr><p>Action: Review with Terrence and Moriah this week. Any deal stuck more than 45 days needs Papa's attention or escalation to Dr. Ballard.</p><p>— Seven Townsel (Data Intelligence) via Jessie (Automation)</p>"
+      },
+      "metadata": {
+        "designer": { "x": 800, "y": 0 }
+      }
+    },
+    {
+      "id": 9,
+      "module": "slack:postMessage",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_SLACK_CONNECTION_ID"
+      },
+      "mapper": {
+        "channel": "YOUR_SLACK_CHANNEL_ID",
+        "text": "📊 *Weekly CRM Health — {{7.week_of}}*\n\n🔴 Stale contacts flagged: *{{7.stale_contacts_count}}*\n🟡 Stuck deals: *{{7.stuck_deals_count}}*\n🔴 Past-due deals: *{{7.overdue_deals_count}}*\n\nHubSpot tasks created. Full report sent to Papa + Dr. Ballard.\n\n_Seven Townsel | Data Intelligence_"
+      },
+      "metadata": {
+        "designer": { "x": 1000, "y": 0 }
+      }
+    },
+    {
+      "id": 10,
+      "module": "notion:createPageInDatabase",
+      "version": 1,
+      "parameters": {
+        "connectionId": "YOUR_NOTION_CONNECTION_ID",
+        "databaseId": "YOUR_NOTION_TASKS_DATABASE_ID"
+      },
+      "mapper": {
+        "title": "Weekly CRM Review — {{7.week_of}} ({{7.stuck_deals_count}} stuck, {{7.overdue_deals_count}} overdue)",
+        "properties": {
+          "Assigned To": "Papa Ballard",
+          "Priority": "High",
+          "Due Date": "{{formatDate(addDays(now; 2); 'YYYY-MM-DD')}}",
+          "Notes": "Stuck deals: {{7.stuck_deals_count}} | Overdue deals: {{7.overdue_deals_count}} | Stale contacts: {{7.stale_contacts_count}}. Review HubSpot and close out dead deals. See email from Seven for full list."
+        }
+      },
+      "metadata": {
+        "designer": { "x": 1200, "y": 0 }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "zone": "us1.make.com"
+  }
+}
